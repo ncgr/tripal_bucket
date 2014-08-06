@@ -1,0 +1,193 @@
+<?php
+
+function bucket_views_api() {
+      return array( 'api' => '3.0', 
+      'path' => drupal_get_path('module', 'bucket'). '/views', );
+ }
+
+/**
+Defining the block for the bucket.
+
+
+/**
+implement hook_menu
+
+*/
+
+function bucket_menu(){
+    $items['basket/add/%'] = array(
+    'page callback' => 'lightshop_add2basket',
+    'page arguments' => array(2),
+    'access arguments' => array('use basket'),
+    'type' => MENU_CALLBACK,
+    'file' => 'lightshop.pages.inc',
+  );
+     $items['basket'] = array(
+    'title' => 'Your Basket',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('lightshop_basket_form'),
+    'access callback' => 'user_access',
+    'access arguments' => array('use basket'),
+    'type' => MENU_CALLBACK,
+    'file' => 'lightshop.pages.inc',
+  );
+
+    $items['lightshop/ajax'] = array(
+    'title' => 'Ajax callback',
+    'page callback' => 'lightshop_ajaxform_process',
+    'delivery callback' => 'ajax_deliver',
+    'access callback' => TRUE,
+    'theme callback' => 'ajax_base_page_theme',
+    'type' => MENU_CALLBACK,
+    'file' => 'lightshop.pages.inc',
+  );
+
+   $items['basket/clear'] = array(
+   'page callback' => 'drupal_get_form',
+   'page arguments' => array('_lightshop_clear_confirm'),
+   'access callback' => TRUE,
+   'type' => MENU_CALLBACK,
+   'file' => 'lightshop.pages.inc',
+  );
+  
+   $items['basket/checkout'] = array(
+    'title' => 'Checkout',
+    'page callback' => 'lightshop_checkout',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'lightshop.pages.inc',
+  );
+ 
+  return $items;
+
+}
+
+
+function add2basket_link($val) {
+  $build = array();
+  $nid=$val->biomaterial_id;
+  $name=$val->example_custom_bio_name;
+  $pass=$nid.'-'.$name;
+  if (_in_basket($nid)) {
+    $build['add2basket_link'] = array(
+      '#markup' => '<span class="add2basket-link">' . t('Added') . '</span>',
+    );
+  }
+  else {
+    $build['add2basket_link'] = array(
+      '#type' => 'link',
+      '#title' => t('Bucket'),
+      '#href' => 'basket/add/'.$pass. '/nojs/',
+      '#attributes' => array(
+        'rel' => 'nofollow',
+        'class' => array('add2basket-link'),
+      ),
+      '#options' => array(
+        'query' => drupal_get_destination(),
+      ),
+      '#ajax' => array(
+        'wrapper' => 'add2basket-link-' . $nid,
+      ),
+    );
+  }
+  $build['add2basket_link']['#prefix'] = '<div id="add2basket-link-' . $nid . '" class="add2basket-link-container">';
+  $build['add2basket_link']['#suffix'] = '</div>';
+  $build['add2basket_link']['#attached'] = array(
+    'css' => array(
+      drupal_get_path('module', 'bucket') . '/theme/lightshop.css',
+    ),
+    'js' => array(
+      drupal_get_path('module', 'bucket') . '/theme/lightshop.js',
+    ),
+  );
+  //debug($build);
+  return render($build);
+}
+
+
+
+function _in_basket($nid) {
+  return isset($_SESSION['basket']['items']) ? array_key_exists($nid, $_SESSION['basket']['items']) : FALSE;
+}
+
+
+function lightshop_block_info() {
+  $block['basket'] = array(
+    'info' => t('Light Shop: Basket Content'),
+    'cache' => DRUPAL_NO_CACHE,
+    'visibility' => BLOCK_VISIBILITY_NOTLISTED,
+    'pages' => "basket",
+  );
+  return $block;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function lightshop_block_view() {
+  if (!user_access('use basket')) {
+    return;
+  }
+  $block = array();
+  $block['subject'] = t('Your Basket');
+  $block['content'] = lightshop_block_content();
+  return $block;
+}
+
+/**
+ * Basket block content.
+ */
+function lightshop_block_content() {
+  $content[] = array(
+    '#theme' => 'lightshop_block_display',
+    '#prefix' => '<div  id="lightshop-ajax-block-content">',
+    '#suffix' => '</div>',
+  );
+  return $content;
+}
+
+function lightshop_menu_alter(&$items) {
+  $type = str_replace('_', '-', LIGHTSHOP_ORDER_NODETYPE);
+  $items['node/add/' . $type]['access callback'] = FALSE;
+}
+
+/**
+ * Implements hook_ajax_render_alter().
+ */
+function lightshop_ajax_render_alter(&$commands) {
+  // Inject any new status messages into the content area.
+  $commands[] = ajax_command_prepend('#block-system-main',
+    '<div class="messages-ajax">' . theme('status_messages') . '</div>'
+  );
+}
+
+/**
+ * Implements template_preprocess_page().
+ */
+function lightshop_preprocess_page(&$vars) {
+  if (arg(0) == 'basket') {
+    $vars['title_prefix'][]['#markup'] = '<div id="lightshop-page-title">';
+    $vars['title_suffix'][]['#markup'] = '</div>';
+  }
+}
+
+function lightshop_check_empty_basket($form, $form_state) {
+  if (!isset($_SESSION['basket']['items'])
+    || empty($_SESSION['basket']['items'])
+  ) {
+    form_set_error('', t('Incorrect form'));
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

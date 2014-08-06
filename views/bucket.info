@@ -1,0 +1,5 @@
+name = bucket
+description = Exposing our bucket table
+core = 7.x
+dependencies[] = views
+files[]=views/bucket_views_handler_field_actions.inc
